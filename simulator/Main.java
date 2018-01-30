@@ -14,8 +14,14 @@ import global.Parameter;
  */
 public class Main {
 
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+	public void run(int people, int step, int store, double t, double f, double p, double q) {
+		Parameter.peopleNum = people;
+		Parameter.stepNum = step;
+		Parameter.storeNum = store;
+		Parameter.threshold = t;
+		Parameter.f = f;
+		Parameter.p = p;
+		Parameter.q = q;
 		
 		System.out.println("=================");
 		System.out.println("P A R A M E T E R");
@@ -45,6 +51,13 @@ public class Main {
 
 		long time2 = System.currentTimeMillis ();
 		System.out.println ( ( time2 - time1 ) / 1000.0 );
+	}
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		
+		Main m1 = new Main();
+		m1.run(100000, 1, 10, 0.0001, 0.25, 0.35, 0.65);
+		m1.run(100000, 1, 30, 0.0001, 0.25, 0.35, 0.65);
 	}
 
 }
