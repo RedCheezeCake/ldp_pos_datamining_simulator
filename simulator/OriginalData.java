@@ -21,6 +21,7 @@ public class OriginalData {
 
 	private Writer txtWriter;
 	private String outputPath = "output/original/originalData_"+peopleNum+"_"+storesNum+"_"+curStep+"-"+stepNum+".txt";
+	private String MoveDataOutputPath = "output/result/originalData_"+peopleNum+"_"+storesNum+".txt";
 
 	// 인원, 상점 리스트 생성
 	public OriginalData() {
@@ -138,12 +139,16 @@ public class OriginalData {
 			showStat();
 		}
 		System.out.println("\nPEOPLE SUM");
+		txtWriter = textUtil.createTXTFile(MoveDataOutputPath);
 		for(int i=0; i<storesNum; i++) {
 			for(int j=0; j<storesNum; j++) {
-				System.out.print((peopleSumArr[i][j]++)+"\t");
+				System.out.print((peopleSumArr[i][j])+"\t");
+				textUtil.writeString(txtWriter, peopleSumArr[i][j] + "\t");
 			}
+			textUtil.writeString(txtWriter, "\n");
 			System.out.println();
 		}
+		textUtil.saveTXTFile(txtWriter);
 		System.out.println();
 		System.out.println("\nD A T A  M A K I N G  C O M P L E T E ! !\n\n");
 	}

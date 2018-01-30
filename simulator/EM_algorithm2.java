@@ -5,11 +5,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.StringTokenizer;
 
 import global.Parameter;
+import global.textUtil;
 
 public class EM_algorithm2 {
 
@@ -23,9 +25,11 @@ public class EM_algorithm2 {
 	
 	private double[][] theta = new double[storesNum][storesNum];
 	private double[][] preTheta = new double[storesNum][storesNum];
-	private HashMap<String,Double> numeProbMap = new HashMap<String,Double>();
-	private double threshold = Parameter.threshold;
 	
+	private double threshold = Parameter.threshold;
+	private String EMDataOutputPath = "output/result/EMData_"+peopleNum+"_"+storesNum+"_"+f+"_"+p+"_"+q+".txt";
+	private Writer txtWriter;
+
 	private double[][][] prob_noised_ij_original_ij = new double[peopleNum][storesNum][storesNum];
 	
 	private ArrayList<Line> noiseData = new ArrayList<Line>();
@@ -130,6 +134,7 @@ public class EM_algorithm2 {
 		
 		//2. Iteration
 		int cnt = 0;
+		double lastMax=0;
 		while(true) {
 			for(int i=0; i<storesNum; i++) 
 				for(int j=0; j<storesNum; j++)
@@ -181,13 +186,17 @@ public class EM_algorithm2 {
 			}
 			System.out.println("[" + cnt+ ":" + max + "]  ");
 		
-			if(max < threshold)
+			if(max < threshold) {
+				lastMax = max;
 				break;
+			}
 			
 			
 			++cnt;
 			
 		}
+		txtWriter = textUtil.createTXTFile(EMDataOutputPath);
+		textUtil.writeString(txtWriter, cnt+"-"+lastMax+"\n");
 		System.out.println("===============");
 		System.out.println("  R E S U L T ");
 		System.out.println("===============");
@@ -197,11 +206,15 @@ public class EM_algorithm2 {
 		System.out.println();
 		for(int i=0; i<storesNum; i++) {
 			System.out.print("["+i+"]");
-			for(int j=0; j<storesNum; j++)
+			for(int j=0; j<storesNum; j++) {
 				System.out.print("\t"+theta[i][j]);
+				textUtil.writeString(txtWriter, theta[i][j]+"\t");
 //				System.out.print(Double.parseDouble(String.format("%.2f",theta[i][j]*100))+"\t");
+			}
+			textUtil.writeString(txtWriter, "\n");
 			System.out.println();
 		}
+		textUtil.saveTXTFile(txtWriter);
 	}
 	
 	public static void main(String[] args) {
