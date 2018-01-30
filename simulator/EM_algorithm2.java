@@ -59,12 +59,6 @@ public class EM_algorithm2 {
 						String cur = lst.nextToken();
 						noiseData.add(new Line(id,pre,cur)); 
 						
-//						double numeProb = 0;
-//						for(int i=0; i<storesNum; i++) 
-//							for(int j=0; j<storesNum; j++)
-//								numeProb += posGivenLx(pre,  i) * posGivenLx(cur,  j);
-//						numeProbMap.put(pre+cur, numeProb);
-						
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -102,31 +96,6 @@ public class EM_algorithm2 {
 		return prob;
 	}
 	
-	
-	private void thetaNomalize() {
-	//	double[][] tmpTheta = new double[storesNum][storesNum];
-		double thetaSum=0;
-		for(int i=0; i<storesNum; i++)
-			for(int j=0; j<storesNum; j++)
-				thetaSum+=theta[i][j];
-		for(int i=0; i<storesNum; i++)
-			for(int j=0; j<storesNum; j++)
-				theta[i][j] = theta[i][j]/thetaSum;
-	/*	
-		double sum=0;
-		for(int i=0; i<storesNum; i++)
-			for(int j=0; j<storesNum; j++)
-				sum += tmpTheta[i][j];
-//		System.out.println("**"+sum);
-		
-		double d =0;
-		if(sum > 1) 
-			d = sum - 1;
-		for(int i=0; i<storesNum; i++)
-			for(int j=0; j<storesNum; j++)
-				theta[i][j] = tmpTheta[i][j]-d;
-			*/
-	}
 	
 	public void computeConditionalProb() {
 		for (int r=0; r<(int)this.peopleNum; ++r) {

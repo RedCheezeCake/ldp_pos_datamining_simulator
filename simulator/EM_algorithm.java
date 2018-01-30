@@ -112,10 +112,11 @@ public class EM_algorithm {
 			
 		// ºÐ¸ð
 		double numeProb = 0;
+		// Àß¸øµÊ.
 		double p = numeProbMap.get(_prePos+_curPos);
 		for(int i=0; i<storesNum; i++) 
 			for(int j=0; j<storesNum; j++)
-				numeProb += preTheta[i][j];
+				numeProb += preTheta[i][j]; 
 
 		return denoProb/(numeProb* p);
 	}
