@@ -27,7 +27,7 @@ public class EM_algorithm2 {
 	private double[][] preTheta = new double[storesNum][storesNum];
 	
 	private double threshold = Parameter.threshold;
-	private String EMDataOutputPath = "output/result/EMData_"+peopleNum+"_"+storesNum+"_"+f+"_"+p+"_"+q+".txt";
+	private String EMDataOutputPath = "output/result/EMData_"+peopleNum+"_"+storesNum+"_"+f+"_"+p+"_"+q;
 	private Writer txtWriter;
 
 	private double[][][] prob_noised_ij_original_ij = new double[peopleNum][storesNum][storesNum];
@@ -188,14 +188,20 @@ public class EM_algorithm2 {
 		
 			if(max < threshold) {
 				lastMax = max;
+				writeResult(cnt, lastMax);
 				break;
 			}
-			
-			
+			if(cnt%500 == 0) {
+				lastMax=max;
+				writeResult(cnt, lastMax);
+			}
 			++cnt;
-			
 		}
-		txtWriter = textUtil.createTXTFile(EMDataOutputPath);
+		
+	}
+	
+	public void writeResult(int cnt, double lastMax) {
+		txtWriter = textUtil.createTXTFile(EMDataOutputPath+"_"+cnt+".txt");
 		textUtil.writeString(txtWriter, cnt+"-"+lastMax+"\n");
 		System.out.println("===============");
 		System.out.println("  R E S U L T ");
@@ -211,12 +217,11 @@ public class EM_algorithm2 {
 				textUtil.writeString(txtWriter, theta[i][j]+"\t");
 //				System.out.print(Double.parseDouble(String.format("%.2f",theta[i][j]*100))+"\t");
 			}
-			textUtil.writeString(txtWriter, "\n");
+//			textUtil.writeString(txtWriter, "\n");
 			System.out.println();
 		}
 		textUtil.saveTXTFile(txtWriter);
 	}
-	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		EM_algorithm2 em = new EM_algorithm2();
