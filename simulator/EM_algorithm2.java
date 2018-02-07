@@ -38,10 +38,16 @@ public class EM_algorithm2 {
 		System.out.println("==========================");
 		System.out.println("  E M - A P P R O A C H  2");
 		System.out.println("==========================");
-		
+		System.out.println("people : "+ this.peopleNum);
+		System.out.println("step   : "+ this.stepNum);
+		System.out.println("store  : "+ this.storesNum);
+		System.out.println("   f   : "+ this.f);
+		System.out.println("   p   : "+ this.p);
+		System.out.println("   q   : "+ this.q);
+		System.out.println("\n");	
 	}
 	public void readData() {
-		for(int curStep=0; curStep<stepNum; curStep++) {
+		for(int curStep=1; curStep<stepNum+1; curStep++) {
 			try {
 				System.out.print(".");
 				String inputPath = "output/noise/noiseData_"+peopleNum+"_"+storesNum+"_"+curStep+"-"+stepNum+"_"+f+"_"+p+"_"+q+".txt";
