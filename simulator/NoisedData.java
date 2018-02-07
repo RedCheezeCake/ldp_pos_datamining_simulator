@@ -6,7 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Writer;
-import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import global.Parameter;
@@ -22,9 +21,6 @@ public class NoisedData {
 	private double p = Parameter.p;
 	private double q = Parameter.q;
 	
-	private ArrayList<String> originalData = new ArrayList<String>();
-	private ArrayList<String> noiseData = new ArrayList<String>();
-	
 	public NoisedData() {
 		System.out.println("=============");
 		System.out.println("  N O I S E ");
@@ -38,32 +34,6 @@ public class NoisedData {
 		System.out.println("\n");		
 	}
 	
-	public void readOriginalData() throws IOException {
-		for(int curStep=1; curStep<=stepNum; curStep++) {
-			try {
-				System.out.print(".");
-				String inputPath = "output/original/originalData_"+peopleNum+"_"+storesNum+"_"+curStep+"-"+stepNum+".txt";
-				FileInputStream stream;
-				stream = new FileInputStream(inputPath);
-				InputStreamReader reader = new InputStreamReader(stream);
-				@SuppressWarnings("resource")
-				BufferedReader buffer = new BufferedReader(reader);
-							
-				String nStepData = "";
-				while(true) {
-					String line = buffer.readLine();
-					if(line == null) 
-						break;
-					nStepData += line+"\n"; 
-				}
-				originalData.add(nStepData);
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		System.out.println("\nD A T A   R E A D   C O M P L E T E ! !\n");
-	}
 	
 	// change or not change at first Noise : true is change
 	private boolean firstNoiseCheck() {
@@ -108,35 +78,41 @@ public class NoisedData {
 		}
 		return line;
 	}
+	
+	public void run() throws IOException {
 
-	public void addNoise() {
-		for(int i=0; i<originalData.size(); i++) {
-			System.out.println(i+" step...");
-			String outputPath = "output/noise/noiseData_"+peopleNum+"_"+storesNum+"_"+i+"-"+stepNum+"_"+f+"_"+p+"_"+q+".txt";
+		for(int curStep=1; curStep<=stepNum; curStep++) {
+			String outputPath = "output/noise/noiseData_"+peopleNum+"_"+storesNum+"_"+curStep+"-"+stepNum+"_"+f+"_"+p+"_"+q+".txt";
 			Writer txtWriter = textUtil.createTXTFile(outputPath);
-			
-			String nStepOriginalData = originalData.get(i);
-			String nStepNoiseData = "";
-			StringTokenizer st = new StringTokenizer(nStepOriginalData,"\n");
-			while(st.hasMoreTokens()) {
-				String line = st.nextToken();
-				StringTokenizer lst = new StringTokenizer(line, "\t");
-				String id = lst.nextToken();
-				String postNoisedData = secondNoise(firstNoise(lst.nextToken()));
-				String currNoisedData = secondNoise(firstNoise(lst.nextToken()));
-				String noisedLine = id + "\t" + postNoisedData + "\t" + currNoisedData + "\n";
-				textUtil.writeString(txtWriter,noisedLine);
-				nStepNoiseData += noisedLine;
+
+			try {
+				System.out.print(".");
+				String inputPath = "output/original/originalData_"+peopleNum+"_"+storesNum+"_"+curStep+"-"+stepNum+".txt";
+				FileInputStream stream;
+				stream = new FileInputStream(inputPath);
+				InputStreamReader reader = new InputStreamReader(stream);
+				@SuppressWarnings("resource")
+				BufferedReader buffer = new BufferedReader(reader);
+							
+				while(true) {
+					String line = buffer.readLine();
+					if(line == null) 
+						break;
+					StringTokenizer lst = new StringTokenizer(line, "\t");
+					String id = lst.nextToken();
+					String postNoisedData = secondNoise(firstNoise(lst.nextToken()));
+					String currNoisedData = secondNoise(firstNoise(lst.nextToken()));
+					textUtil.writeString(txtWriter,
+							id+"\t"+postNoisedData+"\t"+currNoisedData+"\n");
+				}
+
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			noiseData.add(nStepNoiseData);
 			textUtil.saveTXTFile(txtWriter);
 		}
 		System.out.println("N O I S E   A D D I N G   C O M P L E T E ! !\n");
-	}
-	
-	public void run() throws IOException {
-		readOriginalData();
-		addNoise();
 	}
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
