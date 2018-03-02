@@ -137,6 +137,7 @@ public class DBProcess {
 	
 	public LinkedList<LinkedList<Object>> recursiveQuery(String tableName, int pre, int cur, int length, int k) {
 		LinkedList<LinkedList<Object>> result = new LinkedList<LinkedList<Object>>();
+		int minDistance = (pre+cur)/Parameter.moveRange;	// for more fast sort
 		try {
 			rs = stmt.executeQuery("WITH ROUTES(PRE, CUR, PROBABILITY, PATH, LENGTH) AS ("
 					+ 	"SELECT PRE, CUR, PROBABILITY, PATH, LENGTH "
@@ -150,7 +151,9 @@ public class DBProcess {
 					+ 		"WHERE ROUTES.PRE = '"+pre+"' and ROUTES.CUR = "+tableName+".PRE and ROUTES.LENGTH+"+tableName+".LENGTH<="+length
 					+ ")"
 					+ "SELECT * "
-					+ "FROM (SELECT * FROM ROUTES ORDER BY PROBABILITY DESC) "
+					+ "FROM (SELECT * FROM "
+									+ "(SELECT * FROM ROUTES WHERE LENGTH>="+minDistance+") "
+							+ "ORDER BY PROBABILITY DESC) "
 					+ "WHERE PRE='"+pre+"' and CUR='"+cur+"' and LENGTH<="+length+" and ROWNUM<="+k+" "
 					);
 			
