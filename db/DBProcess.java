@@ -208,8 +208,8 @@ public class DBProcess {
 		int start = 0;
 		int end = 10;
 		int[] length = {1, 3, 5};
-		int[] k = {3, 5, 10, 20};
 		
+		int maxk = 20;
 		int dataSize = 1500000;
 		int beaconNum = 30;
 		int num = 10000;
@@ -217,45 +217,42 @@ public class DBProcess {
 		LinkedList<LinkedList<Object>> EmResult;
 		DBProcess dbp = new DBProcess(dbURL, username, password);
 		for(int i=0; i<length.length; i++) {
-			for(int j=0; j<k.length; j++) {
-				System.out.println(start+"->"+end+"\tlength="+(length[i]+end)+"\tk="+k[j]);
-				dbp.createTable("ORIGINAL", "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
-				OriginalResult = dbp.recursiveQuery("ORIGINAL", start, end, (length[i]+end), k[j]);
-				
-				dbp.createTable("BEACON", "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+num+".txt");
-				EmResult = dbp.recursiveQuery("BEACON", start, end, (length[i]+end), k[j]);
-				
-				// matching check
-				for(int x=0; x<k[j]; x++) {
-					boolean flag = false;
-					for(int y=0; y<k[j]; y++) {
-						if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
-							flag = true;
-							break;
-						}
+			dbp.createTable("ORIGINAL", "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
+			dbp.createTable("BEACON", "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+num+".txt");
+			OriginalResult = dbp.recursiveQuery("ORIGINAL", start, end, (length[i]+end), maxk);
+			EmResult = dbp.recursiveQuery("BEACON", start, end, (length[i]+end), maxk);
+
+			// matching check
+			for(int x=0; x<maxk; x++) {
+				boolean flag = false;
+				for(int y=0; y<maxk; y++) {
+					if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
+						flag = true;
+						break;
 					}
-					if(flag)
-						OriginalResult.get(x).add("matched");
-					else
-						OriginalResult.get(x).add("Not matched");
 				}
-				// show result
-				System.out.println("=== O R I G I N A L ===");
-				for(LinkedList<Object> p : OriginalResult) {
-					for(Object q : p) {
-						System.out.print(q + "\t");
-					}
-					System.out.println();
-				}
-				System.out.println("=== E M ===");
-				for(LinkedList<Object> p : EmResult) {
-					for(Object q : p) {
-						System.out.print(q + "\t");
-					}
-					System.out.println();
+				if(flag)
+					OriginalResult.get(x).add("matched");
+				else
+					OriginalResult.get(x).add("Not matched");
+			}
+			
+			// show result
+			System.out.println("=== O R I G I N A L ===");
+			for(LinkedList<Object> p : OriginalResult) {
+				for(Object q : p) {
+					System.out.print(q + "\t");
 				}
 				System.out.println();
 			}
+			System.out.println("=== E M ===");
+			for(LinkedList<Object> p : EmResult) {
+				for(Object q : p) {
+					System.out.print(q + "\t");
+				}
+				System.out.println();
+			}
+			System.out.println();
 		}
 		dbp.closeProcess();
 		
