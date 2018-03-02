@@ -226,9 +226,9 @@ public class DBProcess {
 				EmResult = dbp.recursiveQuery("BEACON", start, end, (length[i]+end), k[j]);
 				
 				// matching check
-				for(int x=0; x<k.length; x++) {
+				for(int x=0; x<k[j]; x++) {
 					boolean flag = false;
-					for(int y=0; y<k.length; y++) {
+					for(int y=0; y<k[j]; y++) {
 						if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
 							flag = true;
 							break;
