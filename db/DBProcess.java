@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Writer;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -15,6 +16,7 @@ import java.util.LinkedList;
 import java.util.StringTokenizer;
 
 import global.Parameter;
+import global.textUtil;
 
 public class DBProcess {
 	String dbURL;
@@ -25,6 +27,8 @@ public class DBProcess {
 	Statement stmt = null;
 	ResultSet rs = null;
 	
+	Writer txtWriter;
+
 	public DBProcess(String dbURL, String username, String password) {
 		this.dbURL = dbURL;
 		this.username = username;
@@ -151,9 +155,8 @@ public class DBProcess {
 					+ 		"WHERE ROUTES.PRE = '"+pre+"' and ROUTES.CUR = "+tableName+".PRE and ROUTES.LENGTH+"+tableName+".LENGTH<="+length
 					+ ")"
 					+ "SELECT * "
-					+ "FROM (SELECT * FROM "
-									+ "(SELECT * FROM ROUTES WHERE LENGTH>="+minDistance+") "
-							+ "ORDER BY PROBABILITY DESC) "
+					+ "FROM (SELECT * FROM ROUTES "
+							+"ORDER BY PROBABILITY DESC) "
 					+ "WHERE PRE='"+pre+"' and CUR='"+cur+"' and LENGTH<="+length+" and ROWNUM<="+k+" "
 					);
 			
@@ -207,25 +210,34 @@ public class DBProcess {
 		String password = "tiger";
 		int start = 0;
 		int end = 10;
-		int[] length = {1, 3, 5};
+		int[] length = {1,3,5};
 		
-		int maxk = 20;
+		int maxk = 100;
 		int dataSize = 1500000;
 		int beaconNum = 30;
 		int num = 10000;
 		LinkedList<LinkedList<Object>> OriginalResult;
 		LinkedList<LinkedList<Object>> EmResult;
 		DBProcess dbp = new DBProcess(dbURL, username, password);
+
+		dbp.createTable("ORIGINAL", "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
+		dbp.createTable("BEACON", "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+num+".txt");
+		
 		for(int i=0; i<length.length; i++) {
-			dbp.createTable("ORIGINAL", "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
-			dbp.createTable("BEACON", "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+num+".txt");
-			OriginalResult = dbp.recursiveQuery("ORIGINAL", start, end, (length[i]+end), maxk);
-			EmResult = dbp.recursiveQuery("BEACON", start, end, (length[i]+end), maxk);
+			long time1 = System.currentTimeMillis (); 
+			int shotestPath = Math.abs(end-start)/2;
+			if(Math.abs(end-start)%2!=0)
+				shotestPath++;
+			dbp.txtWriter = textUtil.createTXTFile("output/topk/"+start+"_"+end+"_"+(shotestPath+length[i])+"_"+maxk+".txt");
+			System.out.println(start+"->"+end+"\t length : "+(shotestPath+length[i]));
+
+			OriginalResult = dbp.recursiveQuery("ORIGINAL", start, end, (shotestPath+length[i]), maxk);
+			EmResult = dbp.recursiveQuery("BEACON", start, end, (shotestPath+length[i]), maxk);
 
 			// matching check
-			for(int x=0; x<maxk; x++) {
+			for(int x=0; x<maxk && x<OriginalResult.size(); x++) {
 				boolean flag = false;
-				for(int y=0; y<maxk; y++) {
+				for(int y=0; y<maxk && x<OriginalResult.size(); y++) {
 					if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
 						flag = true;
 						break;
@@ -239,22 +251,35 @@ public class DBProcess {
 			
 			// show result
 			System.out.println("=== O R I G I N A L ===");
+			textUtil.writeString(dbp.txtWriter, "ORIGINAL\n");
 			for(LinkedList<Object> p : OriginalResult) {
 				for(Object q : p) {
+					textUtil.writeString(dbp.txtWriter, q+"\t");
 					System.out.print(q + "\t");
 				}
+				textUtil.writeString(dbp.txtWriter, "\n");
 				System.out.println();
 			}
+			
 			System.out.println("=== E M ===");
+			textUtil.writeString(dbp.txtWriter, "EM-APPROACH\n");
 			for(LinkedList<Object> p : EmResult) {
 				for(Object q : p) {
+					textUtil.writeString(dbp.txtWriter, q+"\t");
 					System.out.print(q + "\t");
 				}
+				textUtil.writeString(dbp.txtWriter, "\n");
 				System.out.println();
 			}
 			System.out.println();
+			
+			textUtil.saveTXTFile(dbp.txtWriter);
+			OriginalResult.clear();
+			EmResult.clear();
+			
+			long time2 = System.currentTimeMillis ();
+			System.out.println ( ( time2 - time1 ) / 1000.0 );
 		}
 		dbp.closeProcess();
-		
 	}
 }
