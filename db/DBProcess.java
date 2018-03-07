@@ -54,7 +54,6 @@ public class DBProcess {
 	
 	public void createTable(String tableName, String inputPath) {
 		try {
-			stmt.executeQuery("DROP TABLE "+tableName);
 			stmt.executeQuery("CREATE TABLE "+tableName +"("
 					+ "PRE VARCHAR(20),"
 					+ "CUR VARCHAR(20),"
@@ -64,7 +63,7 @@ public class DBProcess {
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.out.println(e.getMessage());
 		}
 		double[][] matrix = makeMatrix(inputPath);
 		insertMatrix(tableName, matrix);
