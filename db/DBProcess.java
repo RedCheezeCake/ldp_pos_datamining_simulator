@@ -209,6 +209,29 @@ public class DBProcess {
 		
 	}
 	
+	public double getProbabilityByK(String table, int k) {
+		double totalCnt = 0;
+		double matchCnt = 0;
+		try {
+			rs = stmt.executeQuery("SELECT COUNT(*) "
+							+ "FROM "+table+" "
+							+ "WHERE ROWNUM<="+k+" ");
+			rs.next();	// Moves the cursor forward one row from its current position.
+			totalCnt = rs.getDouble(1);
+			rs = stmt.executeQuery("SELECT COUNT(*) "
+					+ "FROM ("
+							+ "SELECT * FROM "+table+" WHERE ROWNUM<="+k+")"
+					+ "WHERE MATCH = 'match'");
+			rs.next();
+			matchCnt = rs.getDouble(1);
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return matchCnt/totalCnt;
+	}
+	
 	public void showTable(String tableName) {
 		try {
 			rs = stmt.executeQuery("select * from "+ tableName);
