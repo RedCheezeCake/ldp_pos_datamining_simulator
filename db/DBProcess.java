@@ -264,69 +264,115 @@ public class DBProcess {
 		String dbURL = "jdbc:oracle:thin:@localhost:1521:ORCL";
 		String username = "scott";
 		String password = "tiger";
-		int start = 0;
-		int end = 10;
-		int[] length = {1,3,5};
-		
+		int init = 0;
+		int gap = 10;
+		int time = 5;
+		int[] lengthArray = {1,3,5};
+		int[] kArray = {3, 5, 10, 20, 50, 100};
+		double[][] probMatrix = new double[lengthArray.length][kArray.length];
+		long time1 = System.currentTimeMillis (); 
+
 		int maxk = 100;
-		int dataSize = 1500000;
+		int dataSize = 3000000;
 		int beaconNum = 30;
-		int num = 10000;
+		int emtime = 6000;
 		LinkedList<LinkedList<Object>> OriginalResult;
 		LinkedList<LinkedList<Object>> EmResult;
 		DBProcess dbp = new DBProcess(dbURL, username, password);
 
-		dbp.createTable("ORIGINAL", "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
-		dbp.createTable("BEACON", "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+num+".txt");
-		
-		for(int i=0; i<length.length; i++) {
-			long time1 = System.currentTimeMillis (); 
-			int shotestPath = Math.abs(end-start)/2;
-			if(Math.abs(end-start)%2!=0)
-				shotestPath++;
-			dbp.txtWriter = textUtil.createTXTFile("output/topk/"+start+"_"+end+"_"+(shotestPath+length[i])+"_"+maxk+".txt");
-			System.out.println(start+"->"+end+"\t length : "+(shotestPath+length[i]));
-
-			OriginalResult = dbp.recursiveQuery("ORIGINAL", start, end, (shotestPath+length[i]), maxk);
-			EmResult = dbp.recursiveQuery("BEACON", start, end, (shotestPath+length[i]), maxk);
-
-			// matching check
-			for(int x=0; x<maxk && x<OriginalResult.size(); x++) {
-				boolean flag = false;
-				for(int y=0; y<maxk && x<OriginalResult.size(); y++) {
-					if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
-						flag = true;
-						break;
+		dbp.createTable("ORIGINAL_"+dataSize, "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
+		dbp.createTable("BEACON_"+dataSize, "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+emtime+".txt");
+		for(int t=0; t<time; t++) {
+			int start = t+init;
+			int end = (start+gap)%beaconNum;
+			for(int i=0; i<lengthArray.length; i++) {
+				
+				int shotestPath = Math.abs(end-start)/2;
+				if(Math.abs(end-start)%2!=0)
+					shotestPath++;
+				
+				System.out.println(start+"->"+end+"\t length : "+(shotestPath+lengthArray[i]));
+				dbp.txtWriter = textUtil.createTXTFile("output/topk/"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+maxk+".txt");
+				OriginalResult = dbp.recursiveQuery("ORIGINAL_"+dataSize, start, end, (shotestPath+lengthArray[i]), maxk);
+				EmResult = dbp.recursiveQuery("BEACON_"+dataSize, start, end, (shotestPath+lengthArray[i]), maxk);
+	
+				// matching check
+				for(int x=0; x<maxk && x<OriginalResult.size(); x++) {
+					boolean flag = false;
+					for(int y=0; y<maxk && x<OriginalResult.size(); y++) {
+						if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
+							flag = true;
+							break;
+						}
 					}
+					if(flag)
+						OriginalResult.get(x).add("match");
+					else
+						OriginalResult.get(x).add("not match");
 				}
-				if(flag)
-					OriginalResult.get(x).add("matched");
-				else
-					OriginalResult.get(x).add("Not matched");
-			}
-			
-			// show result
-			System.out.println("=== O R I G I N A L ===");
-			textUtil.writeString(dbp.txtWriter, "ORIGINAL\n");
-			for(LinkedList<Object> p : OriginalResult) {
-				for(Object q : p) {
-					textUtil.writeString(dbp.txtWriter, q+"\t");
-					System.out.print(q + "\t");
+				
+				// show and write result
+//				System.out.println("=== O R I G I N A L ===");
+				textUtil.writeString(dbp.txtWriter, "ORIGINAL\n");
+				for(LinkedList<Object> p : OriginalResult) {
+					for(Object q : p) {
+						textUtil.writeString(dbp.txtWriter, q+"\t");
+//						System.out.print(q + "\t");
+					}
+					textUtil.writeString(dbp.txtWriter, "\n");
+//					System.out.println();
 				}
-				textUtil.writeString(dbp.txtWriter, "\n");
-				System.out.println();
-			}
-			
-			System.out.println("=== E M ===");
-			textUtil.writeString(dbp.txtWriter, "EM-APPROACH\n");
-			for(LinkedList<Object> p : EmResult) {
-				for(Object q : p) {
-					textUtil.writeString(dbp.txtWriter, q+"\t");
-					System.out.print(q + "\t");
+				
+//				System.out.println("=== E M ===");
+				textUtil.writeString(dbp.txtWriter, "EM-APPROACH\n");
+				for(LinkedList<Object> p : EmResult) {
+					for(Object q : p) {
+						textUtil.writeString(dbp.txtWriter, q+"\t");
+//						System.out.print(q + "\t");
+					}
+					textUtil.writeString(dbp.txtWriter, "\n");
+//					System.out.println();
 				}
-				textUtil.writeString(dbp.txtWriter, "\n");
-				System.out.println();
+//				System.out.println();
+				
+				// insert result into database
+				String resultTable = "Original_"+dataSize+"_"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+maxk;
+				dbp.insertResultQuery(OriginalResult, resultTable);
+				for(int k=0; k<kArray.length; k++) {
+					double prob = dbp.getProbabilityByK(resultTable, kArray[k]);
+//					System.out.println("*** K : " + k + "\tProbability : "+ prob);
+					probMatrix[i][k] += prob;
+				}
+				
+				textUtil.saveTXTFile(dbp.txtWriter);
+				OriginalResult.clear();
+				EmResult.clear();
+				
 			}
+		}
+
+		long time2 = System.currentTimeMillis ();
+		System.out.println ( ( time2 - time1 ) / 1000.0 );
+		
+		System.out.println("=========== R E S U L T ============");
+		dbp.txtWriter = textUtil.createTXTFile("output/topk/ProbResult_"+dataSize+"_"+init+"_"+gap+"_"+time+".txt");
+		System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time);
+		textUtil.writeString(dbp.txtWriter, "init : "+init+"\tgap : "+gap+"\ttime : "+time+"\n");
+
+		for(int k : kArray) {
+			System.out.print("\t"+k);
+			textUtil.writeString(dbp.txtWriter, "\t"+k);
+		}
+		System.out.println();
+		textUtil.writeString(dbp.txtWriter, "\n");
+
+		for(int i=0; i<probMatrix.length; i++) {
+			System.out.print(lengthArray[i]+"\t");
+			for(int j=0; j<probMatrix[i].length; j++) {
+				textUtil.writeString(dbp.txtWriter, Double.parseDouble(String.format("%.3f",probMatrix[i][j]/time))+"\t");
+				System.out.print(Double.parseDouble(String.format("%.3f",probMatrix[i][j]/time))+"\t");
+			}
+			textUtil.writeString(dbp.txtWriter, "\n");
 			System.out.println();
 			
 			textUtil.saveTXTFile(dbp.txtWriter);
