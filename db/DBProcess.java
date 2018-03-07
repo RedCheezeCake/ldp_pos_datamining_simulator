@@ -249,6 +249,7 @@ public class DBProcess {
 			e.printStackTrace();
 		}
 	}
+	
 	public void closeProcess() {
 		try {
 			rs.close();
@@ -374,14 +375,8 @@ public class DBProcess {
 			}
 			textUtil.writeString(dbp.txtWriter, "\n");
 			System.out.println();
-			
-			textUtil.saveTXTFile(dbp.txtWriter);
-			OriginalResult.clear();
-			EmResult.clear();
-			
-			long time2 = System.currentTimeMillis ();
-			System.out.println ( ( time2 - time1 ) / 1000.0 );
 		}
+		textUtil.saveTXTFile(dbp.txtWriter);
 		dbp.closeProcess();
 	}
 }
