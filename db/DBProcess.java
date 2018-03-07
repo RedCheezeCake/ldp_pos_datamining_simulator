@@ -177,8 +177,6 @@ public class DBProcess {
 	public void insertResultQuery(LinkedList<LinkedList<Object>> result, String table) {
 		
 		try {
-			stmt.executeQuery("DROP TABLE "+ table);
-
 			stmt.executeQuery("CREATE TABLE "+table +"("
 					+ "PRE VARCHAR(20),"
 					+ "CUR VARCHAR(20),"
@@ -227,7 +225,7 @@ public class DBProcess {
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.out.print(e.getMessage());
 		}
 		return matchCnt/totalCnt;
 	}
@@ -274,7 +272,7 @@ public class DBProcess {
 		long time1 = System.currentTimeMillis (); 
 
 		int maxk = 100;
-		int dataSize = 3000000;
+		int dataSize = 1500000;
 		int beaconNum = 30;
 		int emtime = 6000;
 		LinkedList<LinkedList<Object>> OriginalResult;
@@ -368,6 +366,7 @@ public class DBProcess {
 		textUtil.writeString(dbp.txtWriter, "\n");
 
 		for(int i=0; i<probMatrix.length; i++) {
+			textUtil.writeString(dbp.txtWriter, lengthArray[i]+"\t");
 			System.out.print(lengthArray[i]+"\t");
 			for(int j=0; j<probMatrix[i].length; j++) {
 				textUtil.writeString(dbp.txtWriter, Double.parseDouble(String.format("%.3f",probMatrix[i][j]/time))+"\t");
