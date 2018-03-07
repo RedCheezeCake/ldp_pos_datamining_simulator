@@ -174,6 +174,41 @@ public class DBProcess {
 		return result;
 	}
 	
+	public void insertResultQuery(LinkedList<LinkedList<Object>> result, String table) {
+		
+		try {
+			stmt.executeQuery("DROP TABLE "+ table);
+
+			stmt.executeQuery("CREATE TABLE "+table +"("
+					+ "PRE VARCHAR(20),"
+					+ "CUR VARCHAR(20),"
+					+ "PROBABILITY VARCHAR(100),"			// ** PROBABILITY IS NOT NUMBER! 
+					+ "PATH VARCHAR(50),"
+					+ "LENGTH NUMBER,"
+					+ "MATCH VARCHAR(20))");
+			for(LinkedList<Object> list : result) {
+				String line = "";
+				for(int i=0; i<list.size(); i++) {
+					if(i != 0)
+						line += ", ";
+					if(i == list.size()-1)
+						line += "'";
+					line += list.get(i).toString();
+					if(i == list.size()-1)
+						line += "'";
+				}
+				stmt.executeQuery("INSERT INTO "+table +"("
+						+ "PRE, CUR, PROBABILITY, PATH, LENGTH, MATCH )"
+						+ "VALUES ("
+						+ line +")");
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			System.out.print(e.getMessage());
+		}
+		
+	}
+	
 	public void showTable(String tableName) {
 		try {
 			rs = stmt.executeQuery("select * from "+ tableName);
