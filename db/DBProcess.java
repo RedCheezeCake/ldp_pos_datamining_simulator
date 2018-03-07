@@ -279,6 +279,7 @@ public class DBProcess {
 		LinkedList<LinkedList<Object>> EmResult;
 		DBProcess dbp = new DBProcess(dbURL, username, password);
 
+		System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time+"\tdata size : "+dataSize);
 		dbp.createTable("ORIGINAL_"+dataSize, "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
 		dbp.createTable("BEACON_"+dataSize, "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+emtime+".txt");
 		for(int t=0; t<time; t++) {
