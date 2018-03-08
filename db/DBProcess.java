@@ -53,6 +53,7 @@ public class DBProcess {
 	}
 	
 	public void createTable(String tableName, String inputPath) {
+		boolean flag = true;
 		try {
 			stmt.executeQuery("CREATE TABLE "+tableName +"("
 					+ "PRE VARCHAR(20),"
@@ -63,11 +64,14 @@ public class DBProcess {
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
-			System.out.println(e.getMessage());
+			System.out.println("CREATING MATRIX TABLE IS FAIL : "+e.getMessage());
+			flag = false;
 		}
-		double[][] matrix = makeMatrix(inputPath);
-		insertMatrix(tableName, matrix);
-//		showTable(tableName);
+		if(flag) {
+			double[][] matrix = makeMatrix(inputPath);
+			insertMatrix(tableName, matrix);
+//			showTable(tableName);
+		}
 	}
 
 	private double[][] makeMatrix(String inputPath){
@@ -175,7 +179,7 @@ public class DBProcess {
 	}
 	
 	public void insertResultQuery(LinkedList<LinkedList<Object>> result, String table) {
-		
+		boolean flag = true;
 		try {
 			stmt.executeQuery("CREATE TABLE "+table +"("
 					+ "PRE VARCHAR(20),"
@@ -184,25 +188,53 @@ public class DBProcess {
 					+ "PATH VARCHAR(50),"
 					+ "LENGTH NUMBER,"
 					+ "MATCH VARCHAR(20))");
-			for(LinkedList<Object> list : result) {
-				String line = "";
-				for(int i=0; i<list.size(); i++) {
-					if(i != 0)
-						line += ", ";
-					if(i == list.size()-1)
-						line += "'";
-					line += list.get(i).toString();
-					if(i == list.size()-1)
-						line += "'";
-				}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			System.out.print("CREATING RESULT TABLE IS FAIL : "+e.getMessage());
+			flag = false;
+			try {
+				stmt.executeQuery("DROP TABLE "+table);
+			} catch (SQLException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		}
+		if(!flag) {
+			try {
+				stmt.executeQuery("CREATE TABLE "+table +"("
+						+ "PRE VARCHAR(20),"
+						+ "CUR VARCHAR(20),"
+						+ "PROBABILITY VARCHAR(100),"			// ** PROBABILITY IS NOT NUMBER! 
+						+ "PATH VARCHAR(50),"
+						+ "LENGTH NUMBER,"
+						+ "MATCH VARCHAR(20))");
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		for(LinkedList<Object> list : result) {
+			String line = "";
+			for(int i=0; i<list.size(); i++) {
+				if(i != 0)
+					line += ", ";
+				if(i == list.size()-1)
+					line += "'";
+				line += list.get(i).toString();
+				if(i == list.size()-1)
+					line += "'";
+			}
+			try {
 				stmt.executeQuery("INSERT INTO "+table +"("
 						+ "PRE, CUR, PROBABILITY, PATH, LENGTH, MATCH )"
 						+ "VALUES ("
 						+ line +")");
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			System.out.print(e.getMessage());
 		}
 		
 	}
@@ -264,7 +296,7 @@ public class DBProcess {
 		String username = "scott";
 		String password = "tiger";
 		int init = 0;
-		int gap = 10;
+		int gap = 14;
 		int time = 5;
 		int[] lengthArray = {1,3,5};
 		int[] kArray = {3, 5, 10, 20, 50, 100};
@@ -272,7 +304,7 @@ public class DBProcess {
 		long time1 = System.currentTimeMillis (); 
 
 		int maxk = 100;
-		int dataSize = 1500000;
+		int dataSize = 4500000;
 		int beaconNum = 30;
 		int emtime = 6000;
 		LinkedList<LinkedList<Object>> OriginalResult;
