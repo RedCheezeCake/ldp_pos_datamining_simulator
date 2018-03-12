@@ -193,16 +193,13 @@ public class DBProcess {
 			// TODO Auto-generated catch block
 			System.out.print("CREATING RESULT TABLE IS FAIL : "+e.getMessage());
 			flag = false;
-			try {
-				stmt.executeQuery("DROP TABLE "+table);
-			} catch (SQLException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
 		}
 		if(!flag) {
 			try {
+				stmt.executeQuery("DROP TABLE "+table);
+
 				stmt.executeQuery("CREATE TABLE "+table +"("
+						+ "RANK NUMBER,"
 						+ "PRE VARCHAR(20),"
 						+ "CUR VARCHAR(20),"
 						+ "PROBABILITY VARCHAR(100),"			// ** PROBABILITY IS NOT NUMBER! 
@@ -214,7 +211,7 @@ public class DBProcess {
 				e.printStackTrace();
 			}
 		}
-		
+		int cnt=1;
 		for(LinkedList<Object> list : result) {
 			String line = "";
 			for(int i=0; i<list.size(); i++) {
@@ -230,7 +227,7 @@ public class DBProcess {
 				stmt.executeQuery("INSERT INTO "+table +"("
 						+ "PRE, CUR, PROBABILITY, PATH, LENGTH, MATCH )"
 						+ "VALUES ("
-						+ line +")");
+						+ (cnt++)+","+line +")");
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -300,6 +297,7 @@ public class DBProcess {
 		int time = 5;
 		int[] lengthArray = {1,3,5};
 		int[] kArray = {3, 5, 10, 20, 50, 100};
+		double[] rankProb = new double[kArray.length];
 		double[][] probMatrix = new double[lengthArray.length][kArray.length];
 		long time1 = System.currentTimeMillis (); 
 
@@ -318,7 +316,6 @@ public class DBProcess {
 			int start = t+init;
 			int end = (start+gap)%beaconNum;
 			for(int i=0; i<lengthArray.length; i++) {
-				
 				int shotestPath = Math.abs(end-start)/2;
 				if(Math.abs(end-start)%2!=0)
 					shotestPath++;
@@ -329,57 +326,60 @@ public class DBProcess {
 				EmResult = dbp.recursiveQuery("BEACON_"+dataSize, start, end, (shotestPath+lengthArray[i]), maxk);
 	
 				// matching check
-				for(int x=0; x<maxk && x<OriginalResult.size(); x++) {
-					boolean flag = false;
-					for(int y=0; y<maxk && x<OriginalResult.size(); y++) {
-						if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
-							flag = true;
-							break;
+				double rankDiff = 0;
+				for(int k=0; k<kArray.length; k++) {
+					int matchCnt = 0;
+					for(int x=0; x<kArray[k] && x<OriginalResult.size(); x++) {
+						boolean flag = false;
+						for(int y=0; y<kArray[k] && x<EmResult.size(); y++) {
+							if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
+								rankDiff += Math.pow(x-y, 2);
+								flag = true;
+								break;
+							}
+						}
+						if(flag)
+							matchCnt++;
+						else {
+							rankDiff += Math.pow(k, 2);
 						}
 					}
-					if(flag)
-						OriginalResult.get(x).add("match");
-					else
-						OriginalResult.get(x).add("not match");
+					// calculate probability 
+					rankProb[k] += 1-((6*rankDiff)/(kArray[k]*(Math.pow(kArray[k], 2)-1)));
+					probMatrix[i][k] += (double) matchCnt / (double) kArray[k];
+					System.out.println(matchCnt);
 				}
 				
 				// show and write result
-//				System.out.println("=== O R I G I N A L ===");
 				textUtil.writeString(dbp.txtWriter, "ORIGINAL\n");
 				for(LinkedList<Object> p : OriginalResult) {
 					for(Object q : p) {
 						textUtil.writeString(dbp.txtWriter, q+"\t");
-//						System.out.print(q + "\t");
 					}
 					textUtil.writeString(dbp.txtWriter, "\n");
-//					System.out.println();
 				}
 				
-//				System.out.println("=== E M ===");
 				textUtil.writeString(dbp.txtWriter, "EM-APPROACH\n");
 				for(LinkedList<Object> p : EmResult) {
 					for(Object q : p) {
 						textUtil.writeString(dbp.txtWriter, q+"\t");
-//						System.out.print(q + "\t");
 					}
 					textUtil.writeString(dbp.txtWriter, "\n");
-//					System.out.println();
 				}
-//				System.out.println();
 				
+				/*
 				// insert result into database
-				String resultTable = "Original_"+dataSize+"_"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+maxk;
+				String resultTable = "Original_"+dataSize+"_"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+kArray[i];
 				dbp.insertResultQuery(OriginalResult, resultTable);
+				
 				for(int k=0; k<kArray.length; k++) {
 					double prob = dbp.getProbabilityByK(resultTable, kArray[k]);
-//					System.out.println("*** K : " + k + "\tProbability : "+ prob);
 					probMatrix[i][k] += prob;
 				}
-				
+				*/
 				textUtil.saveTXTFile(dbp.txtWriter);
 				OriginalResult.clear();
 				EmResult.clear();
-				
 			}
 		}
 
@@ -391,6 +391,9 @@ public class DBProcess {
 		System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time);
 		textUtil.writeString(dbp.txtWriter, "init : "+init+"\tgap : "+gap+"\ttime : "+time+"\n");
 
+		System.out.println("LENGTH - K probability");
+		textUtil.writeString(dbp.txtWriter, "LENGTH - K probability\n");
+		
 		for(int k : kArray) {
 			System.out.print("\t"+k);
 			textUtil.writeString(dbp.txtWriter, "\t"+k);
@@ -407,6 +410,21 @@ public class DBProcess {
 			}
 			textUtil.writeString(dbp.txtWriter, "\n");
 			System.out.println();
+		}
+		
+		System.out.println("RANK - K probability");
+		textUtil.writeString(dbp.txtWriter, "RANK - K probability\n");
+		
+		for(int k : kArray) {
+			System.out.print(k+"\t");
+			textUtil.writeString(dbp.txtWriter, k+"\t");
+		}
+		System.out.println();
+		textUtil.writeString(dbp.txtWriter, "\n");
+
+		for(int i=0; i<rankProb.length; i++) {
+			System.out.print(Double.parseDouble(String.format("%.3f",rankProb[i]/time))+"\t");
+			textUtil.writeString(dbp.txtWriter, Double.parseDouble(String.format("%.3f",rankProb[i]/time))+"\t");
 		}
 		textUtil.saveTXTFile(dbp.txtWriter);
 		dbp.closeProcess();
