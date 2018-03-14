@@ -159,7 +159,7 @@ public class DBProcess {
 					+ "SELECT * "
 					+ "FROM (SELECT * FROM ROUTES "
 							+"ORDER BY PROBABILITY DESC) "
-					+ "WHERE PRE='"+pre+"' and CUR='"+cur+"' and LENGTH<="+length+" and ROWNUM<="+k+" "
+					+ "WHERE PRE='"+pre+"' and CUR='"+cur+"' and LENGTH<="+length+" "
 					);
 			
 			ResultSetMetaData rsmd = rs.getMetaData();
@@ -293,10 +293,11 @@ public class DBProcess {
 		String username = "scott";
 		String password = "tiger";
 		int init = 0;
-		int gap = 14;
-		int time = 5;
-		int[] lengthArray = {1,3,5};
+		int gap = 8;
+		int time = 1;
+		int[] lengthArray = {5};
 		int[] kArray = {3, 5, 10, 20, 50, 100};
+		int k = 0;
 		double[] rankProb = new double[kArray.length];
 		double[][] probMatrix = new double[lengthArray.length][kArray.length];
 		long time1 = System.currentTimeMillis (); 
@@ -321,10 +322,13 @@ public class DBProcess {
 					shotestPath++;
 				
 				System.out.println(start+"->"+end+"\t length : "+(shotestPath+lengthArray[i]));
-				dbp.txtWriter = textUtil.createTXTFile("output/topk/"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+maxk+".txt");
 				OriginalResult = dbp.recursiveQuery("ORIGINAL_"+dataSize, start, end, (shotestPath+lengthArray[i]), maxk);
 				EmResult = dbp.recursiveQuery("BEACON_"+dataSize, start, end, (shotestPath+lengthArray[i]), maxk);
-	
+				
+				k = (int) (OriginalResult.size()*0.01);
+				dbp.txtWriter = textUtil.createTXTFile("output/topk/"+dataSize+"_"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+k+".txt");
+				String[] matchArr = new String[k];
+				/*
 				// matching check
 				double rankDiff = 0;
 				for(int k=0; k<kArray.length; k++) {
@@ -349,13 +353,45 @@ public class DBProcess {
 					probMatrix[i][k] += (double) matchCnt / (double) kArray[k];
 					System.out.println(matchCnt);
 				}
+				*/
+				
+				// matching check
+	//			double rankDiff = 0;
+	//			for(int k=0; k<kArray.length; k++) {
+					int matchCnt = 0;
+					for(int x=0; x<k && x<OriginalResult.size(); x++) {
+						boolean flag = false;
+						for(int y=0; y<k && x<EmResult.size(); y++) {
+							if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
+	//							rankDiff += Math.pow(x-y, 2);
+								flag = true;
+								break;
+							}
+						}
+						if(flag) {
+							matchCnt++;
+							matchArr[x] = "match";
+						}
+						else {
+							matchArr[x] = "Not match";
+	//						rankDiff += Math.pow(k, 2);
+						}
+					}
+					// calculate probability 
+	//				rankProb[k] += 1-((6*rankDiff)/(kArray[k]*(Math.pow(kArray[k], 2)-1)));
+					probMatrix[i][0] += (double) matchCnt / (double) k;
+					System.out.println(matchCnt);
+	//			}
 				
 				// show and write result
 				textUtil.writeString(dbp.txtWriter, "ORIGINAL\n");
+				int cnt=0;
 				for(LinkedList<Object> p : OriginalResult) {
 					for(Object q : p) {
 						textUtil.writeString(dbp.txtWriter, q+"\t");
 					}
+					if(cnt<k)
+						textUtil.writeString(dbp.txtWriter, matchArr[cnt++]);
 					textUtil.writeString(dbp.txtWriter, "\n");
 				}
 				
@@ -387,17 +423,17 @@ public class DBProcess {
 		System.out.println ( ( time2 - time1 ) / 1000.0 );
 		
 		System.out.println("=========== R E S U L T ============");
-		dbp.txtWriter = textUtil.createTXTFile("output/topk/ProbResult_"+dataSize+"_"+init+"_"+gap+"_"+time+".txt");
+		dbp.txtWriter = textUtil.createTXTFile("output/topk/ProbResult_"+dataSize+"_"+init+"_"+gap+"_"+time+"_"+k+".txt");
 		System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time);
 		textUtil.writeString(dbp.txtWriter, "init : "+init+"\tgap : "+gap+"\ttime : "+time+"\n");
 
 		System.out.println("LENGTH - K probability");
 		textUtil.writeString(dbp.txtWriter, "LENGTH - K probability\n");
 		
-		for(int k : kArray) {
+	//	for(int k : kArray) {
 			System.out.print("\t"+k);
 			textUtil.writeString(dbp.txtWriter, "\t"+k);
-		}
+	//	}
 		System.out.println();
 		textUtil.writeString(dbp.txtWriter, "\n");
 
@@ -415,10 +451,10 @@ public class DBProcess {
 		System.out.println("RANK - K probability");
 		textUtil.writeString(dbp.txtWriter, "RANK - K probability\n");
 		
-		for(int k : kArray) {
+	//	for(int k : kArray) {
 			System.out.print(k+"\t");
 			textUtil.writeString(dbp.txtWriter, k+"\t");
-		}
+	//	}
 		System.out.println();
 		textUtil.writeString(dbp.txtWriter, "\n");
 
