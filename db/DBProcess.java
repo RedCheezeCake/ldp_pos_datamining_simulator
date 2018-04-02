@@ -144,23 +144,26 @@ public class DBProcess {
 	
 	public LinkedList<LinkedList<Object>> recursiveQuery(String table, int pre, int cur, int length, int k) {
 		LinkedList<LinkedList<Object>> result = new LinkedList<LinkedList<Object>>();
+		String query = "WITH ROUTES(PRE, CUR, PROBABILITY, PATH, LENGTH) AS ("
+				+ 	"SELECT PRE, CUR, PROBABILITY, PATH, LENGTH "
+				+ 	"FROM "+table+" "
+				+ 	"WHERE "+table+".PRE='"+pre+"' "
+				+ 	"UNION ALL "
+				+ 		"SELECT ROUTES.PRE, "+table+".CUR, "
+				+ 				"ROUTES.PROBABILITY*"+table+".PROBABILITY as PROBABILITY,"
+				+ 				"ROUTES.PATH||'-'||"+table+".CUR as PATH,"
+				+ 				"ROUTES.LENGTH+"+table+".LENGTH as LENGTH "
+				+ 		"FROM ROUTES, "+table+" "
+				+ 		"WHERE ROUTES.CUR = "+table+".PRE and ROUTES.LENGTH+"+table+".LENGTH<="+length
+				+ ")"
+				+ "SELECT * "
+				+ "FROM (SELECT * FROM ROUTES "
+				+"ORDER BY PROBABILITY DESC) "
+				+ "WHERE PRE='"+pre+"' and CUR='"+cur+"'";
+		if(k!=0)
+				query += " and rownum <= "+k;  
 		try {
-			rs = stmt.executeQuery("WITH ROUTES(PRE, CUR, PROBABILITY, PATH, LENGTH) AS ("
-					+ 	"SELECT PRE, CUR, PROBABILITY, PATH, LENGTH "
-					+ 	"FROM "+table+" "
-					+ 	"UNION ALL "
-					+ 		"SELECT ROUTES.PRE, "+table+".CUR, "
-					+ 				"ROUTES.PROBABILITY*"+table+".PROBABILITY as PROBABILITY,"
-					+ 				"ROUTES.PATH||'-'||"+table+".CUR as PATH,"
-					+ 				"ROUTES.LENGTH+"+table+".LENGTH as LENGTH "
-					+ 		"FROM ROUTES, "+table+" "
-					+ 		"WHERE ROUTES.PRE = '"+pre+"' and ROUTES.CUR = "+table+".PRE and ROUTES.LENGTH+"+table+".LENGTH<="+length
-					+ ")"
-					+ "SELECT * "
-					+ "FROM (SELECT * FROM ROUTES "
-							+"ORDER BY PROBABILITY DESC) "
-					+ "WHERE PRE='"+pre+"' and CUR='"+cur+"' and LENGTH<="+length+" "
-					);
+			rs = stmt.executeQuery(query);
 			
 			ResultSetMetaData rsmd = rs.getMetaData();
 			int columnNumber = rsmd.getColumnCount();
@@ -293,19 +296,18 @@ public class DBProcess {
 		String username = "scott";
 		String password = "tiger";
 		int init = 0;
-		int gap = 10;
-		int time = 1;
+		int gap = 3;
+		int time = 5;
 		int[] lengthArray = {5};
 //		int[] kArray = {3, 5, 10, 20, 50, 100};
 		double[] kArray = {0.01,0.005,0.0025};
-		double[] rankProb = new double[kArray.length];
-		double[][] probMatrix = new double[lengthArray.length][kArray.length];
+		double[][] probMatrix;
 		long time1 = System.currentTimeMillis (); 
 
 		int maxk = 100;
-		int[] dataSize = {150000, 15000};
+		int[] dataSize = {1500000};
 		int beaconNum = 30;
-		int emtime = 1000;
+		int emtime = 6000;
 		LinkedList<LinkedList<Object>> OriginalResult;
 		LinkedList<LinkedList<Object>> EmResult;
 		DBProcess dbp = new DBProcess(dbURL, username, password);
@@ -314,6 +316,7 @@ public class DBProcess {
 			System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time+"\tdata size : "+dataSize[d]);
 			dbp.createTable("ORIGINAL_"+dataSize[d], "output\\result\\originalData_"+dataSize[d]+"_"+beaconNum+".txt");
 			dbp.createTable("BEACON_"+dataSize[d], "output\\result\\EMData_"+dataSize[d]+"_"+beaconNum+"_0.25_0.35_0.65_"+emtime+".txt");
+			probMatrix = new double[lengthArray.length][kArray.length];
 			for(int t=0; t<time; t++) {
 				int start = t+init;
 				int end = (start+gap)%beaconNum;
@@ -323,37 +326,28 @@ public class DBProcess {
 						shotestPath++;
 					
 					System.out.println(start+"->"+end+"\t length : "+(shotestPath+lengthArray[i]));
-					OriginalResult = dbp.recursiveQuery("ORIGINAL_"+dataSize[d], start, end, (shotestPath+lengthArray[i]), maxk);
-					EmResult = dbp.recursiveQuery("BEACON_"+dataSize[d], start, end, (shotestPath+lengthArray[i]), maxk);
+					OriginalResult = dbp.recursiveQuery("ORIGINAL_"+dataSize[d], start, end, (shotestPath+lengthArray[i]),0);
+					EmResult = dbp.recursiveQuery("BEACON_"+dataSize[d], start, end, (shotestPath+lengthArray[i]),0);
 					
 					for(int _k=0; _k<kArray.length; _k++) {
-						
 						int kSize = (int) (OriginalResult.size()*kArray[_k]);
-						String[] matchArr = new String[kSize];
 					
 					// matching check
 						int matchCnt = 0;
 						for(int x=0; x<kSize && x<OriginalResult.size(); x++) {
 							boolean flag = false;
-							for(int y=0; y<kSize && x<EmResult.size(); y++) {
+							for(int y=0; y<kSize && y<EmResult.size(); y++) {
 								if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
 									flag = true;
 									break;
 								}
 							}
-							if(flag) {
+							if(flag) 
 								matchCnt++;
-								matchArr[x] = "match";
-							}
-							else {
-								matchArr[x] = "Not match";
-							}
 						}
-						probMatrix[i][_k] += (double) matchCnt / (double) kSize;
-						System.out.println(matchCnt);
+						probMatrix[i][_k] += (double) matchCnt / ( kArray[_k] * OriginalResult.size());
+						System.out.println(OriginalResult.size()+" / "+(int)(OriginalResult.size()*kArray[_k])+" / "+matchCnt);
 					}
-					
-	
 					OriginalResult.clear();
 					EmResult.clear();
 				}
