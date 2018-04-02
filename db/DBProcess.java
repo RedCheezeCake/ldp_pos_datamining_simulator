@@ -144,23 +144,26 @@ public class DBProcess {
 	
 	public LinkedList<LinkedList<Object>> recursiveQuery(String table, int pre, int cur, int length, int k) {
 		LinkedList<LinkedList<Object>> result = new LinkedList<LinkedList<Object>>();
+		String query = "WITH ROUTES(PRE, CUR, PROBABILITY, PATH, LENGTH) AS ("
+				+ 	"SELECT PRE, CUR, PROBABILITY, PATH, LENGTH "
+				+ 	"FROM "+table+" "
+				+ 	"WHERE "+table+".PRE='"+pre+"' "
+				+ 	"UNION ALL "
+				+ 		"SELECT ROUTES.PRE, "+table+".CUR, "
+				+ 				"ROUTES.PROBABILITY*"+table+".PROBABILITY as PROBABILITY,"
+				+ 				"ROUTES.PATH||'-'||"+table+".CUR as PATH,"
+				+ 				"ROUTES.LENGTH+"+table+".LENGTH as LENGTH "
+				+ 		"FROM ROUTES, "+table+" "
+				+ 		"WHERE ROUTES.CUR = "+table+".PRE and ROUTES.LENGTH+"+table+".LENGTH<="+length
+				+ ")"
+				+ "SELECT * "
+				+ "FROM (SELECT * FROM ROUTES "
+				+"ORDER BY PROBABILITY DESC) "
+				+ "WHERE PRE='"+pre+"' and CUR='"+cur+"'";
+		if(k!=0)
+				query += " and rownum <= "+k;  
 		try {
-			rs = stmt.executeQuery("WITH ROUTES(PRE, CUR, PROBABILITY, PATH, LENGTH) AS ("
-					+ 	"SELECT PRE, CUR, PROBABILITY, PATH, LENGTH "
-					+ 	"FROM "+table+" "
-					+ 	"UNION ALL "
-					+ 		"SELECT ROUTES.PRE, "+table+".CUR, "
-					+ 				"ROUTES.PROBABILITY*"+table+".PROBABILITY as PROBABILITY,"
-					+ 				"ROUTES.PATH||'-'||"+table+".CUR as PATH,"
-					+ 				"ROUTES.LENGTH+"+table+".LENGTH as LENGTH "
-					+ 		"FROM ROUTES, "+table+" "
-					+ 		"WHERE ROUTES.PRE = '"+pre+"' and ROUTES.CUR = "+table+".PRE and ROUTES.LENGTH+"+table+".LENGTH<="+length
-					+ ")"
-					+ "SELECT * "
-					+ "FROM (SELECT * FROM ROUTES "
-							+"ORDER BY PROBABILITY DESC) "
-					+ "WHERE PRE='"+pre+"' and CUR='"+cur+"' and LENGTH<="+length+" "
-					);
+			rs = stmt.executeQuery(query);
 			
 			ResultSetMetaData rsmd = rs.getMetaData();
 			int columnNumber = rsmd.getColumnCount();
@@ -293,176 +296,94 @@ public class DBProcess {
 		String username = "scott";
 		String password = "tiger";
 		int init = 0;
-		int gap = 8;
-		int time = 1;
+		int gap = 3;
+		int time = 5;
 		int[] lengthArray = {5};
-		int[] kArray = {3, 5, 10, 20, 50, 100};
-		int k = 0;
-		double[] rankProb = new double[kArray.length];
-		double[][] probMatrix = new double[lengthArray.length][kArray.length];
+//		int[] kArray = {3, 5, 10, 20, 50, 100};
+		double[] kArray = {0.01,0.005,0.0025};
+		double[][] probMatrix;
 		long time1 = System.currentTimeMillis (); 
 
 		int maxk = 100;
-		int dataSize = 4500000;
+		int[] dataSize = {1500000};
 		int beaconNum = 30;
 		int emtime = 6000;
 		LinkedList<LinkedList<Object>> OriginalResult;
 		LinkedList<LinkedList<Object>> EmResult;
 		DBProcess dbp = new DBProcess(dbURL, username, password);
 
-		System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time+"\tdata size : "+dataSize);
-		dbp.createTable("ORIGINAL_"+dataSize, "output\\result\\originalData_"+dataSize+"_"+beaconNum+".txt");
-		dbp.createTable("BEACON_"+dataSize, "output\\result\\EMData_"+dataSize+"_"+beaconNum+"_0.25_0.35_0.65_"+emtime+".txt");
-		for(int t=0; t<time; t++) {
-			int start = t+init;
-			int end = (start+gap)%beaconNum;
-			for(int i=0; i<lengthArray.length; i++) {
-				int shotestPath = Math.abs(end-start)/2;
-				if(Math.abs(end-start)%2!=0)
-					shotestPath++;
-				
-				System.out.println(start+"->"+end+"\t length : "+(shotestPath+lengthArray[i]));
-				OriginalResult = dbp.recursiveQuery("ORIGINAL_"+dataSize, start, end, (shotestPath+lengthArray[i]), maxk);
-				EmResult = dbp.recursiveQuery("BEACON_"+dataSize, start, end, (shotestPath+lengthArray[i]), maxk);
-				
-				k = (int) (OriginalResult.size()*0.01);
-				dbp.txtWriter = textUtil.createTXTFile("output/topk/"+dataSize+"_"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+k+".txt");
-				String[] matchArr = new String[k];
-				/*
-				// matching check
-				double rankDiff = 0;
-				for(int k=0; k<kArray.length; k++) {
-					int matchCnt = 0;
-					for(int x=0; x<kArray[k] && x<OriginalResult.size(); x++) {
-						boolean flag = false;
-						for(int y=0; y<kArray[k] && x<EmResult.size(); y++) {
-							if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
-								rankDiff += Math.pow(x-y, 2);
-								flag = true;
-								break;
+		for(int d=0; d<dataSize.length; d++) {
+			System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time+"\tdata size : "+dataSize[d]);
+			dbp.createTable("ORIGINAL_"+dataSize[d], "output\\result\\originalData_"+dataSize[d]+"_"+beaconNum+".txt");
+			dbp.createTable("BEACON_"+dataSize[d], "output\\result\\EMData_"+dataSize[d]+"_"+beaconNum+"_0.25_0.35_0.65_"+emtime+".txt");
+			probMatrix = new double[lengthArray.length][kArray.length];
+			for(int t=0; t<time; t++) {
+				int start = t+init;
+				int end = (start+gap)%beaconNum;
+				for(int i=0; i<lengthArray.length; i++) {
+					int shotestPath = Math.abs(end-start)/2;
+					if(Math.abs(end-start)%2!=0)
+						shotestPath++;
+					
+					System.out.println(start+"->"+end+"\t length : "+(shotestPath+lengthArray[i]));
+					OriginalResult = dbp.recursiveQuery("ORIGINAL_"+dataSize[d], start, end, (shotestPath+lengthArray[i]),0);
+					EmResult = dbp.recursiveQuery("BEACON_"+dataSize[d], start, end, (shotestPath+lengthArray[i]),0);
+					
+					for(int _k=0; _k<kArray.length; _k++) {
+						int kSize = (int) (OriginalResult.size()*kArray[_k]);
+					
+					// matching check
+						int matchCnt = 0;
+						for(int x=0; x<kSize && x<OriginalResult.size(); x++) {
+							boolean flag = false;
+							for(int y=0; y<kSize && y<EmResult.size(); y++) {
+								if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
+									flag = true;
+									break;
+								}
 							}
+							if(flag) 
+								matchCnt++;
 						}
-						if(flag)
-							matchCnt++;
-						else {
-							rankDiff += Math.pow(k, 2);
-						}
+						probMatrix[i][_k] += (double) matchCnt / ( kArray[_k] * OriginalResult.size());
+						System.out.println(OriginalResult.size()+" / "+(int)(OriginalResult.size()*kArray[_k])+" / "+matchCnt);
 					}
-					// calculate probability 
-					rankProb[k] += 1-((6*rankDiff)/(kArray[k]*(Math.pow(kArray[k], 2)-1)));
-					probMatrix[i][k] += (double) matchCnt / (double) kArray[k];
-					System.out.println(matchCnt);
+					OriginalResult.clear();
+					EmResult.clear();
 				}
-				*/
-				
-				// matching check
-	//			double rankDiff = 0;
-	//			for(int k=0; k<kArray.length; k++) {
-					int matchCnt = 0;
-					for(int x=0; x<k && x<OriginalResult.size(); x++) {
-						boolean flag = false;
-						for(int y=0; y<k && x<EmResult.size(); y++) {
-							if(OriginalResult.get(x).get(3).toString().compareTo(EmResult.get(y).get(3).toString())==0) {
-	//							rankDiff += Math.pow(x-y, 2);
-								flag = true;
-								break;
-							}
-						}
-						if(flag) {
-							matchCnt++;
-							matchArr[x] = "match";
-						}
-						else {
-							matchArr[x] = "Not match";
-	//						rankDiff += Math.pow(k, 2);
-						}
-					}
-					// calculate probability 
-	//				rankProb[k] += 1-((6*rankDiff)/(kArray[k]*(Math.pow(kArray[k], 2)-1)));
-					probMatrix[i][0] += (double) matchCnt / (double) k;
-					System.out.println(matchCnt);
-	//			}
-				
-				// show and write result
-				textUtil.writeString(dbp.txtWriter, "ORIGINAL\n");
-				int cnt=0;
-				for(LinkedList<Object> p : OriginalResult) {
-					for(Object q : p) {
-						textUtil.writeString(dbp.txtWriter, q+"\t");
-					}
-					if(cnt<k)
-						textUtil.writeString(dbp.txtWriter, matchArr[cnt++]);
-					textUtil.writeString(dbp.txtWriter, "\n");
-				}
-				
-				textUtil.writeString(dbp.txtWriter, "EM-APPROACH\n");
-				for(LinkedList<Object> p : EmResult) {
-					for(Object q : p) {
-						textUtil.writeString(dbp.txtWriter, q+"\t");
-					}
-					textUtil.writeString(dbp.txtWriter, "\n");
-				}
-				
-				/*
-				// insert result into database
-				String resultTable = "Original_"+dataSize+"_"+start+"_"+end+"_"+(shotestPath+lengthArray[i])+"_"+kArray[i];
-				dbp.insertResultQuery(OriginalResult, resultTable);
-				
-				for(int k=0; k<kArray.length; k++) {
-					double prob = dbp.getProbabilityByK(resultTable, kArray[k]);
-					probMatrix[i][k] += prob;
-				}
-				*/
-				textUtil.saveTXTFile(dbp.txtWriter);
-				OriginalResult.clear();
-				EmResult.clear();
 			}
-		}
-
-		long time2 = System.currentTimeMillis ();
-		System.out.println ( ( time2 - time1 ) / 1000.0 );
-		
-		System.out.println("=========== R E S U L T ============");
-		dbp.txtWriter = textUtil.createTXTFile("output/topk/ProbResult_"+dataSize+"_"+init+"_"+gap+"_"+time+"_"+k+".txt");
-		System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time);
-		textUtil.writeString(dbp.txtWriter, "init : "+init+"\tgap : "+gap+"\ttime : "+time+"\n");
-
-		System.out.println("LENGTH - K probability");
-		textUtil.writeString(dbp.txtWriter, "LENGTH - K probability\n");
-		
-	//	for(int k : kArray) {
-			System.out.print("\t"+k);
-			textUtil.writeString(dbp.txtWriter, "\t"+k);
-	//	}
-		System.out.println();
-		textUtil.writeString(dbp.txtWriter, "\n");
-
-		for(int i=0; i<probMatrix.length; i++) {
-			textUtil.writeString(dbp.txtWriter, lengthArray[i]+"\t");
-			System.out.print(lengthArray[i]+"\t");
-			for(int j=0; j<probMatrix[i].length; j++) {
-				textUtil.writeString(dbp.txtWriter, Double.parseDouble(String.format("%.3f",probMatrix[i][j]/time))+"\t");
-				System.out.print(Double.parseDouble(String.format("%.3f",probMatrix[i][j]/time))+"\t");
+	
+			long time2 = System.currentTimeMillis ();
+			System.out.println ( ( time2 - time1 ) / 1000.0 );
+			
+			System.out.println("=========== R E S U L T ============");
+			dbp.txtWriter = textUtil.createTXTFile("output/topk/ProbResult_"+dataSize[d]+"_"+init+"_"+gap+"_"+time+".txt");
+			System.out.println("init : "+init+"\tgap : "+gap+"\ttime : "+time);
+			textUtil.writeString(dbp.txtWriter, "init : "+init+"\tgap : "+gap+"\ttime : "+time+"\n");
+	
+			System.out.println("LENGTH - K probability");
+			textUtil.writeString(dbp.txtWriter, "LENGTH - K probability\n");
+			
+			for(double k : kArray) {
+				System.out.print("\t"+k);
+				textUtil.writeString(dbp.txtWriter, "\t"+k);
 			}
-			textUtil.writeString(dbp.txtWriter, "\n");
 			System.out.println();
-		}
+			textUtil.writeString(dbp.txtWriter, "\n");
+	
+			for(int i=0; i<probMatrix.length; i++) {
+				textUtil.writeString(dbp.txtWriter, lengthArray[i]+"\t");
+				System.out.print(lengthArray[i]+"\t");
+				for(int j=0; j<probMatrix[i].length; j++) {
+					textUtil.writeString(dbp.txtWriter, Double.parseDouble(String.format("%.3f",probMatrix[i][j]/time))+"\t");
+					System.out.print(Double.parseDouble(String.format("%.3f",probMatrix[i][j]/time))+"\t");
+				}
+				textUtil.writeString(dbp.txtWriter, "\n");
+				System.out.println();
+			}
+			textUtil.saveTXTFile(dbp.txtWriter);
 		
-		System.out.println("RANK - K probability");
-		textUtil.writeString(dbp.txtWriter, "RANK - K probability\n");
-		
-	//	for(int k : kArray) {
-			System.out.print(k+"\t");
-			textUtil.writeString(dbp.txtWriter, k+"\t");
-	//	}
-		System.out.println();
-		textUtil.writeString(dbp.txtWriter, "\n");
-
-		for(int i=0; i<rankProb.length; i++) {
-			System.out.print(Double.parseDouble(String.format("%.3f",rankProb[i]/time))+"\t");
-			textUtil.writeString(dbp.txtWriter, Double.parseDouble(String.format("%.3f",rankProb[i]/time))+"\t");
 		}
-		textUtil.saveTXTFile(dbp.txtWriter);
 		dbp.closeProcess();
 	}
 }
